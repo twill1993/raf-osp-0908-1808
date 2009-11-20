@@ -23,12 +23,9 @@ public class FrameTableEntry extends IflFrameTableEntry
        @OSPProject Memory
     */
 	
-	// OVO SAM UPRAVO DODAO SAMO DA ISPROBAMO SVN //
-	
     public FrameTableEntry(int frameID)
     {
-        // your code goes here
-
+        super(frameID);
     }
 
 

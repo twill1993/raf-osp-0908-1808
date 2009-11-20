@@ -14,6 +14,7 @@ import osp.Hardware.*;
 
 public class PageTable extends IflPageTable
 {
+	int maxPages = 0;
     /** 
 	The page table constructor. Must call
 	
@@ -25,7 +26,15 @@ public class PageTable extends IflPageTable
     */
     public PageTable(TaskCB ownerTask)
     {
-        // your code goes here
+    	super(ownerTask);
+    	
+    	maxPages = (int) Math.pow(2, MMU.getPageAddressBits()); // Broj stranica
+    	super.pages = new PageTableEntry[maxPages]; // Inicijalizacija arraya
+    	
+    	for(int i = 0; i < maxPages; ++i) // Konstruisanje svake, dijeli im se po redni broj
+    	{
+    		super.pages[i] = new PageTableEntry(this, i);
+    	}
 
     }
 
@@ -38,7 +47,15 @@ public class PageTable extends IflPageTable
     public void do_deallocateMemory()
     {
         // your code goes here
-
+    	//this.pages.length
+//    	TaskCB task = super.getTask();
+//    	
+//    	MMU.getFrame(0).
+//    	for(int i = 0; i < task.getPa; ++i)
+//    	{
+//    		super.pages[i] = null;
+//    		MMU.getf
+//    	}
     }
 
 

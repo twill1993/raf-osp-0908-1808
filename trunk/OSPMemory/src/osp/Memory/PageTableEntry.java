@@ -27,8 +27,7 @@ public class PageTableEntry extends IflPageTableEntry
     */
     public PageTableEntry(PageTable ownerPageTable, int pageNumber)
     {
-        // your code goes here
-
+    	super(ownerPageTable, pageNumber);
     }
 
     /**
@@ -45,10 +44,18 @@ public class PageTableEntry extends IflPageTableEntry
 
 	@OSPProject Memory
      */
+    
+    //goal of this method is to increment the lock count of the fram associated with the page.
     public int do_lock(IORB iorb)
     {
-        // your code goes here
-
+    	if(!isValid())
+    	{
+    		PageFaultHandler.handlePageFault(iorb.getThread(), iorb.getDeviceID(), this);
+    	}
+    
+    	this.getFrame().incrementLockCount();
+    	int lockCount = this.getFrame().getLockCount();
+    	return lockCount;
     }
 
     /** This method decreases the lock count on the page by one. 
@@ -59,17 +66,13 @@ public class PageTableEntry extends IflPageTableEntry
     */
     public void do_unlock()
     {
-        // your code goes here
+    	if(this.getFrame().getLockCount()  > 0)
+    	{
+    		this.getFrame().decrementLockCount();
+    	}
 
     }
 
 
-    /*
-       Feel free to add methods/fields to improve the readability of your code
-    */
-
 }
 
-/*
-      Feel free to add local classes to improve the readability of your code
-*/

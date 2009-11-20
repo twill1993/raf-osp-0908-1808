@@ -17,6 +17,8 @@ import osp.Interrupts.*;
 */
 public class MMU extends IflMMU
 {
+	static ArrayList<FrameTableEntry> frameTable;
+	static PageFaultHandler handler;
     /** 
         This method is called once before the simulation starts. 
 	Can be used to initialize the frame table and other static variables.
@@ -25,8 +27,18 @@ public class MMU extends IflMMU
     */
     public static void init()
     {
-        // your code goes here
-
+    	frameTable = new ArrayList<FrameTableEntry>();
+    	//used to initilize the frame table
+        int size = MMU.getFrameTableSize();
+        for(int i = 0; i < size; i++)
+        {
+        	FrameTableEntry fte = new FrameTableEntry(i);
+        	frameTable.add(fte);
+        	MMU.setFrame(i, fte);
+        }
+        // PageFaultHandler is able to access any variable defined in that class
+        handler = new PageFaultHandler();
+        
     }
 
     /**
@@ -48,11 +60,22 @@ public class MMU extends IflMMU
 
        @OSPProject Memory
     */
-    static public PageTableEntry do_refer(int memoryAddress,
-					  int referenceType, ThreadCB thread)
+    /**
+     * This method takes an address of a byte in the logical memory of the thread,
+     * a type of the memory reference (MemoryRead, MemoryWrite, or MemoryLock)
+     * and a thread that made the reference. The method then needs to determine
+     * the page of the thread’s logical memory to which the reference was made.
+     * The methods getVirtualAddressBits() and getPageAddressBits(), both
+     * inherited from the superclass IflMMU, can be used to determine the number
+     * of bits allocated to represent the offset within the page. This number can then
+     * be used to compute the page size and then the page to which memoryAddress
+     * belongs.
+     */
+    static public PageTableEntry do_refer(int memoryAddress, int referenceType, ThreadCB thread)
     {
-        // your code goes here
-
+    	int bits = MMU.getPageAddressBits();
+    	
+    	return null;
     }
 
     /** Called by OSP after printing an error message. The student can
@@ -64,8 +87,7 @@ public class MMU extends IflMMU
      */
     public static void atError()
     {
-        // your code goes here
-
+        System.out.println("MMU error");
     }
 
     /** Called by OSP after printing a warning message. The student
@@ -77,17 +99,7 @@ public class MMU extends IflMMU
      */
     public static void atWarning()
     {
-        // your code goes here
-
+    	System.out.println("MMU warning");
     }
 
-
-    /*
-       Feel free to add methods/fields to improve the readability of your code
-    */
-
 }
-
-/*
-      Feel free to add local classes to improve the readability of your code
-*/

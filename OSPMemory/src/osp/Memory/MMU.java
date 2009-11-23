@@ -89,14 +89,33 @@ public class MMU extends IflMMU
     	}
     	else if(!page.isValid()){
     		if(thread != page.getValidatingThread()){
-    			
+    			thread.suspend(page);
+    			if(page.isValid()){
+    				if(thread.getStatus() != ThreadCB.ThreadKill){
+    					page.getFrame().setDirty(false);
+        	    		page.getFrame().setReferenced(false);
+        	    		return page;
+    				}
+    				return null;
+    			}
     		}
-    		else if(thread == page.getValidatingThread()){
+    		else if(thread == page.getValidatingThread())
+    		{
+    			InterruptVector iv = new InterruptVector();
+    			iv.setPage(page);
+    			iv.setThread(thread);
+    			iv.setReferenceType(0);
     			
+    			CPU.interrupt(0); //prosledi joj se pageFault :?
     		}
     	}
     	
-    	return null;
+    	if(thread.getStatus() != ThreadCB.ThreadKill){
+    		page.getFrame().setDirty(false);
+    		page.getFrame().setReferenced(false);
+    	}
+    	
+    	return page;
     }
 
     /** Called by OSP after printing an error message. The student can

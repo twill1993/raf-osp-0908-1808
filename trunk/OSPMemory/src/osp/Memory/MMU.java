@@ -39,7 +39,7 @@ public class MMU extends IflMMU
         	MMU.setFrame(i, fte);
         }
         // PageFaultHandler is able to access any variable defined in that class
-        handler = new PageFaultHandler();
+        
         
     }
 
@@ -101,12 +101,10 @@ public class MMU extends IflMMU
     		}
     		else if(thread == page.getValidatingThread())
     		{
-    			InterruptVector iv = new InterruptVector();
-    			iv.setPage(page);
-    			iv.setThread(thread);
-    			iv.setReferenceType(0);
-    			
-    			CPU.interrupt(0); //prosledi joj se pageFault :?
+    			InterruptVector.setPage(page);
+    			InterruptVector.setThread(thread);
+    			InterruptVector.setReferenceType(referenceType);
+    			CPU.interrupt(PageFault); //prosledi joj se pageFault :?
     		}
     	}
     	

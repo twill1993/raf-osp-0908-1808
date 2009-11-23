@@ -76,8 +76,29 @@ public class PageFaultHandler extends IflPageFaultHandler
 					 int referenceType,
 					 PageTableEntry page)
     {
-        // your code goes here
+        if(page.isValid()) return FAILURE;	// Ako je vec u memoriji
+    	
+        FrameTableEntry frame = findUnlockedFrame();
+        if(frame == null) return NotEnoughMemory;	// Ako nema slobodnih frejmova
+        
+        if(thread.getStatus() == ThreadKill) return FAILURE; // Thread poginuo u medjuvremenu
+        
+        
+    	
+    	return SUCCESS;
 
+    }
+    
+    private static FrameTableEntry findUnlockedFrame()
+    {
+    	for(FrameTableEntry f : MMU.frameTable)
+    	{
+    		if(!f.isReserved())
+    		{
+    			return f;
+    		}
+    	}
+    	return null;
     }
 
 

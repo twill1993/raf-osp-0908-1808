@@ -65,6 +65,13 @@ public class PageTable extends IflPageTable
     	
     }
 
+    public PageTableEntry findSwappablePage()
+    {
+    	for(PageTableEntry p : pages)
+    	{
+    		if(!p.isReserved())
+    	}
+    }
 
     /*
        Feel free to add methods/fields to improve the readability of your code

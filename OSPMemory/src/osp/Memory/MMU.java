@@ -66,12 +66,22 @@ public class MMU extends IflMMU
    
     static public PageTableEntry do_refer(int memoryAddress, int referenceType, ThreadCB thread)
     {
-    	int pageSize = (int) Math.pow(2, getPageAddressBits());
+    	int pageSize = (int) Math.pow(2, getVirtualAddressBits() - getPageAddressBits()); // Valjda ipak ovako treba
     	int pageNumber = memoryAddress/pageSize;
     	int pageOffset = memoryAddress % pageSize;
-    	//OVA LINIJA NE VALJA
-    	//TREBA MI KOJI JE PAGE
-    	PageTableEntry page = thread.getReservedFrame().getPage();
+
+    	PageTableEntry page = null; //thread.getReservedFrame().getPage();
+    	
+    	/*
+    	MyOut.print("do_refer", "PageSize : " + pageSize);
+    	MyOut.print("do_refer", "Refered address : " + memoryAddress);
+    	MyOut.print("do_refer", "PageAddressBits : " + getPageAddressBits());
+    	MyOut.print("do_refer", "VirtualAddressBits : " + getVirtualAddressBits());
+    	MyOut.print("do_refer", "Page number : " + pageNumber + "; Total pages : " + thread.getTask().getPageTable().pages.length);
+    	*/
+    	
+    	page = thread.getTask().getPageTable().pages[pageNumber];
+    	
     	if(page.isValid()){
     		page.getFrame().setDirty(true);
     		page.getFrame().setReferenced(true);

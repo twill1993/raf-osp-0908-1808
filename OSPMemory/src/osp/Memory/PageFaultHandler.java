@@ -83,8 +83,39 @@ public class PageFaultHandler extends IflPageFaultHandler
         
         if(thread.getStatus() == ThreadKill) return FAILURE; // Thread poginuo u medjuvremenu
         
+        frame.setReserved(thread.getTask()); // Rezervisanje pejdza
         
+        SystemEvent suspendEvent = new SystemEvent("PageFault"); 
+        thread.suspend(suspendEvent); // Obustavljanje threada dok se swappuje
+        if(thread.getStatus() == ThreadKill) return FAILURE; // Opet mogucnost izgibije
     	
+        if(frame.getPage() != null)	// Ako vec ima stranica u okviru
+        {
+        	if(frame.isDirty())	// Ako je perverzna
+        	{
+        		thread.getTask().getSwapFile().write(frame.getID(),	// Swap-out 
+        				frame.getPage(), thread);
+        		frame.getPage().setValid(false);
+        		frame.getPage().setFrame(null);
+        		
+        		if(thread.getStatus() == ThreadKill) return FAILURE; // ...
+        	}
+        	frame.setPage(null);	// Cisto
+        	frame.setDirty(false);
+        }
+        
+        thread.getTask().getSwapFile().read(frame.getID(),
+        		page, thread);	// Swap-in
+        frame.setPage(page);
+        page.setFrame(frame);
+        page.setValid(true);
+        
+        if(thread.getStatus() == ThreadKill) return FAILURE; // ?
+        
+        frame.setReserved(null); // Odrezervisanje
+        suspendEvent.notifyThreads();
+        ThreadCB.dispatch();
+        
     	return SUCCESS;
 
     }
@@ -93,7 +124,7 @@ public class PageFaultHandler extends IflPageFaultHandler
     {
     	for(FrameTableEntry f : MMU.frameTable)
     	{
-    		if(!f.isReserved())
+    		if(!f.isReserved() && !f.isReferenced())
     		{
     			return f;
     		}

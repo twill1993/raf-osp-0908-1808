@@ -78,7 +78,12 @@ public class MMU extends IflMMU
     		return page;
     	}
     	else if(!page.isValid()){
-    		
+    		if(thread != page.getValidatingThread()){
+    			
+    		}
+    		else if(thread == page.getValidatingThread()){
+    			
+    		}
     	}
     	
     	return null;

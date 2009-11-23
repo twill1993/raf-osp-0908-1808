@@ -76,18 +76,33 @@ public class PageFaultHandler extends IflPageFaultHandler
 					 int referenceType,
 					 PageTableEntry page)
     {
-        if(page.isValid()) return FAILURE;	// Ako je vec u memoriji
+        if(page.isValid()) 
+        {
+        	page.notifyThreads();
+        	ThreadCB.dispatch();
+        	return FAILURE;	// Ako je vec u memoriji
+        }
     	
         FrameTableEntry frame = findUnlockedFrame();
-        if(frame == null) return NotEnoughMemory;	// Ako nema slobodnih frejmova
+        if(frame == null)
+        {
+        	page.notifyThreads();
+        	ThreadCB.dispatch();
+        	return NotEnoughMemory;	// Ako nema slobodnih frejmova
+        }
         
-        if(thread.getStatus() == ThreadKill) return FAILURE; // Thread poginuo u medjuvremenu
+        //if(thread.getStatus() == ThreadKill) {return FAILURE; // Thread poginuo u medjuvremenu
         
         frame.setReserved(thread.getTask()); // Rezervisanje pejdza
         
         SystemEvent suspendEvent = new SystemEvent("PageFault"); 
         thread.suspend(suspendEvent); // Obustavljanje threada dok se swappuje
-        if(thread.getStatus() == ThreadKill) return FAILURE; // Opet mogucnost izgibije
+        if(thread.getStatus() == ThreadKill) 
+        {
+        	page.notifyThreads();
+        	ThreadCB.dispatch();
+        	return FAILURE; // Opet mogucnost izgibije
+        }
     	
         if(frame.getPage() != null)	// Ako vec ima stranica u okviru
         {
@@ -98,7 +113,12 @@ public class PageFaultHandler extends IflPageFaultHandler
         		frame.getPage().setValid(false);
         		frame.getPage().setFrame(null);
         		
-        		if(thread.getStatus() == ThreadKill) return FAILURE; // ...
+        		if(thread.getStatus() == ThreadKill) 
+        		{
+        			page.notifyThreads();
+                	ThreadCB.dispatch();
+        			return FAILURE; // ...
+        		}
         	}
         	frame.setPage(null);	// Cisto
         	frame.setDirty(false);
@@ -110,10 +130,18 @@ public class PageFaultHandler extends IflPageFaultHandler
         page.setFrame(frame);
         page.setValid(true);
         
-        if(thread.getStatus() == ThreadKill) return FAILURE; // ?
+        if(thread.getStatus() == ThreadKill) 
+        {
+        	page.notifyThreads();
+        	ThreadCB.dispatch();
+        	return FAILURE; // ?
+        }
         
         frame.setReserved(null); // Odrezervisanje
+        frame.setDirty(referenceType == MemoryWrite);
+        
         suspendEvent.notifyThreads();
+        page.notifyThreads();
         ThreadCB.dispatch();
         
     	return SUCCESS;

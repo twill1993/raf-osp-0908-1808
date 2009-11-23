@@ -29,11 +29,13 @@ public class MMU extends IflMMU
     {
     	frameTable = new ArrayList<FrameTableEntry>();
     	//used to initilize the frame table
+    	//since the total number of frames is known
         int size = MMU.getFrameTableSize();
         for(int i = 0; i < size; i++)
         {
         	FrameTableEntry fte = new FrameTableEntry(i);
         	frameTable.add(fte);
+        	//To set a frame entry, use the method setFrame() in class MMU.
         	MMU.setFrame(i, fte);
         }
         // PageFaultHandler is able to access any variable defined in that class
@@ -59,21 +61,25 @@ public class MMU extends IflMMU
        @return The referenced page.
 
        @OSPProject Memory
+       @author marija
     */
-    /**
-     * This method takes an address of a byte in the logical memory of the thread,
-     * a type of the memory reference (MemoryRead, MemoryWrite, or MemoryLock)
-     * and a thread that made the reference. The method then needs to determine
-     * the page of the thread’s logical memory to which the reference was made.
-     * The methods getVirtualAddressBits() and getPageAddressBits(), both
-     * inherited from the superclass IflMMU, can be used to determine the number
-     * of bits allocated to represent the offset within the page. This number can then
-     * be used to compute the page size and then the page to which memoryAddress
-     * belongs.
-     */
+   
     static public PageTableEntry do_refer(int memoryAddress, int referenceType, ThreadCB thread)
     {
-    	int bits = MMU.getPageAddressBits();
+    	int pageSize = (int) Math.pow(2, getPageAddressBits());
+    	int pageNumber = memoryAddress/pageSize;
+    	int pageOffset = memoryAddress % pageSize;
+    	//OVA LINIJA NE VALJA
+    	//TREBA MI KOJI JE PAGE
+    	PageTableEntry page = thread.getReservedFrame().getPage();
+    	if(page.isValid()){
+    		page.getFrame().setDirty(true);
+    		page.getFrame().setReferenced(true);
+    		return page;
+    	}
+    	else if(!page.isValid()){
+    		
+    	}
     	
     	return null;
     }

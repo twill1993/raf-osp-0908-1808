@@ -34,7 +34,8 @@ public class PageTable extends IflPageTable
     	
     	for(int i = 0; i < maxPages; ++i) // Konstruisanje svake, dijeli im se po redni broj
     	{
-    		super.pages[i] = new PageTableEntry(this, ++PageTable.absPage);
+    		//super.pages[i] = new PageTableEntry(this, ++PageTable.absPage);
+    		super.pages[i] = new PageTableEntry(this, i);
     	}
 
     }

@@ -78,7 +78,10 @@ public class PageFaultHandler extends IflPageFaultHandler
 					 PageTableEntry page)
     {
         if(page.isValid())
+        {
+        	ThreadCB.dispatch();
         	return FAILURE;
+        }
         
         FrameTableEntry frame = null;
         page.setValidatingThread(thread);
@@ -97,6 +100,7 @@ public class PageFaultHandler extends IflPageFaultHandler
         if(frame == null)
         {
         	page.setValidatingThread(null);
+        	ThreadCB.dispatch();
         	return NotEnoughMemory;
         }
         
@@ -116,6 +120,7 @@ public class PageFaultHandler extends IflPageFaultHandler
         		if(thread.getStatus() == ThreadKill)
         		{
         			page.setValidatingThread(null);
+        			ThreadCB.dispatch();
         			return FAILURE;
         		}
         	}
@@ -128,6 +133,7 @@ public class PageFaultHandler extends IflPageFaultHandler
         if(thread.getStatus() == ThreadKill)
         {
         	frame.setDirty(false);
+        	ThreadCB.dispatch();
         	return FAILURE;
         }
         

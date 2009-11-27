@@ -11,14 +11,10 @@ package osp.Devices;
 import osp.IFLModules.*;
 import osp.Threads.*;
 import osp.Utilities.*;
-import osp.Hardware.*;
-import osp.Memory.*;
-import osp.FileSys.*;
-import osp.Tasks.*;
-import java.util.*;
 
 public class Device extends IflDevice
 {
+	private GenericList iorbWaiting;
     /**
         This constructor initializes a device with the provided parameters.
 	As a first statement it must have the following:
@@ -37,7 +33,8 @@ public class Device extends IflDevice
          * One thing that requires initialization is the
          * TODO: variable iorbQueue described later in this section
          */
-        // iorbQueue.add()????
+         iorbQueue = new GenericList();
+         iorbWaiting = new GenericList();
     }
 
     /**

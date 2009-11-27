@@ -1,11 +1,7 @@
 package osp.Devices;
-import java.util.*;
 import osp.IFLModules.*;
-import osp.Hardware.*;
 import osp.Interrupts.*;
 import osp.Threads.*;
-import osp.Utilities.*;
-import osp.Tasks.*;
 import osp.Memory.*;
 import osp.FileSys.*;
 
@@ -42,17 +38,63 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     */
     public void do_handleInterrupt()
     {
-        // your code goes here
-
+    	//1.
+    	IORB iorb = (IORB) InterruptVector.getEvent();
+        ThreadCB thread = InterruptVector.getThread();
+      //  PageTableEntry page = iorb.getPage();
+        OpenFile oFile = iorb.getOpenFile();
+      
+       //2.
+        oFile.decrementIORBCount();
+       
+        //3.
+        if(oFile.closePending && iorb.getOpenFile().getIORBCount() == 0)
+        {
+    	   oFile.close();
+        }
+        
+        //4.
+        iorb.getPage().do_lock(iorb);
+       
+        //5.
+        if(iorb.getThread().getTask().getStatus() != TaskTerm)
+        {
+        	if(iorb.getDeviceID() != SwapDeviceID && iorb.getThread().getStatus() == ThreadCB.ThreadKill)
+            {
+            	iorb.getPage().getFrame().setReferenced(true);
+            	if(iorb.getIOType() == FileRead)
+            	{
+            		iorb.getPage().getFrame().setDirty(true);
+            	}
+            }
+        	//6.
+            else
+            {
+            	iorb.getPage().getFrame().setDirty(false);
+            }
+        }
+        //7.
+        if(iorb.getThread().getTask().getStatus() == TaskTerm && iorb.getPage().getFrame().isReserved())
+        {
+        	iorb.getPage().getFrame().setUnreserved(iorb.getThread().getTask());
+        }
+        //8.
+        iorb.notifyThreads();
+        
+        //9.
+        int id = iorb.getDeviceID();
+        Device d = Device.get(id);
+        Device.get(id).setBusy(false);
+        
+        //10.
+        if(d.dequeueIORB() != null){
+        	d.startIO(iorb);
+        }
+      
+        //11. 
+        ThreadCB.dispatch();
     }
 
 
-    /*
-       Feel free to add methods/fields to improve the readability of your code
-    */
-
 }
 
-/*
-      Feel free to add local classes to improve the readability of your code
-*/

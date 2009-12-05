@@ -8,13 +8,15 @@ package osp.Devices;
     @OSPProject Devices
 */
 
+import osp.Hardware.Disk;
 import osp.IFLModules.*;
+import osp.Memory.MMU;
 import osp.Threads.*;
 import osp.Utilities.*;
 
 public class Device extends IflDevice
 {
-	private GenericList iorbWaiting;
+    GenericList iorbWaiting;
     /**
         This constructor initializes a device with the provided parameters.
 	As a first statement it must have the following:
@@ -70,8 +72,12 @@ public class Device extends IflDevice
     	
     	iorb.getPage().do_lock(iorb);
     	iorb.getOpenFile().incrementIORBCount();
-    	iorb.setCylinder(iorb.getCylinder());
-    	if(iorb.getThread().getStatus() != ThreadCB.ThreadKill){
+    	int blocksPerTrack = ((Disk) this).getSectorsPerTrack()*((Disk) this).getBytesPerSector()/(int) Math.pow(2, MMU.getVirtualAddressBits() - MMU.getPageAddressBits()); 
+    	int cylinder = iorb.getBlockNumber()/ (blocksPerTrack * ((Disk) this).getPlatters());
+
+    	iorb.setCylinder(cylinder);
+    	if(iorb.getThread().getStatus() != ThreadCB.ThreadKill)
+    	{
     		if(!this.isBusy())
     		{
     			this.startIO(iorb);
@@ -79,7 +85,7 @@ public class Device extends IflDevice
     		}
     		else
     		{
-    			
+    			((GenericList) iorbQueue).append(iorb);
     		}
     	}
     	else return FAILURE;
@@ -95,7 +101,15 @@ public class Device extends IflDevice
     */
     public IORB do_dequeueIORB()
     {
-       return null;
+    	if(iorbQueue.isEmpty())
+    	{
+    		return null;
+    	}
+    	else
+    	{
+    		return (IORB) ((GenericList) iorbQueue).getHead();
+    	}
+
     }
 
     /**
@@ -113,7 +127,35 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
-    	
+    	if(iorbQueue.isEmpty())
+    	{
+    		return;
+    	}
+//    	for(int i = 0; i < iorbQueue.length(); i++){
+//    		if((boolean)iorbQueue.contains(thread))
+//    		{
+//    			
+//    		}
+//    	}
+    	for(int i = 0; i < iorbQueue.length(); i++)
+    	{
+    		IORB iorb = (IORB) ((GenericList)iorbQueue).getAt(i);
+    		if(iorb.getThread() == thread && thread.getStatus() == ThreadKill)
+    		{
+    			((GenericList) iorbQueue).remove(i);
+    			iorb.getPage().do_unlock();
+    			iorb.getOpenFile().decrementIORBCount();
+    			try{
+    				iorb.getOpenFile().close();
+    				//set close pending
+    			}
+    			catch(Exception e){
+    				System.out.println("Exception");
+    			}
+    		}
+    	}
+
+//    	
     }
 
     /** Called by OSP after printing an error message. The student can
@@ -125,6 +167,7 @@ public class Device extends IflDevice
      */
     public static void atError()
     {
+     Device.printableStatus(getTableSize());
      System.out.println("Error");
     }
 

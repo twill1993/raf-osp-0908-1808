@@ -40,6 +40,7 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     public void do_handleInterrupt()
     {
     	//1.
+  
     	IORB iorb = (IORB) InterruptVector.getEvent();
         OpenFile oFile = iorb.getOpenFile();
         ThreadCB thread = iorb.getThread();
@@ -47,7 +48,8 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
         FrameTableEntry frame = page.getFrame();
         
        //2.
-      	oFile.decrementIORBCount();
+        oFile.decrementIORBCount();
+        
       
       	//3.
     	if(oFile.getIORBCount() == 0 && oFile.closePending)
@@ -56,10 +58,8 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
 		}
 			
         //4.
-        if(iorb.getPage().getFrame().getLockCount() > 0)
-        {
-        	iorb.getPage().unlock();	
-        }
+        iorb.getPage().unlock();	
+        
 		
         //5.
         TaskCB task = thread.getTask();
@@ -74,13 +74,13 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
             	}
             }
         	//6.
-            else if(iorb.getDeviceID() == SwapDeviceID)
+        	else //if(iorb.getDeviceID() == SwapDeviceID)
             {
             	frame.setDirty(false);
             }
         }
         //7.
-        else if(task.getStatus() == TaskTerm && frame.isReserved())
+        if(task.getStatus() == TaskTerm && frame.isReserved())
         {
         	frame.setUnreserved(task);
         }
@@ -88,16 +88,16 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
         iorb.notifyThreads();
         
         //9.
-        int id = iorb.getDeviceID();
-        Device d = Device.get(id);
-        Device.get(id).setBusy(false);
-//        System.out.println("Device id = " + id);
+        int deviceID = iorb.getDeviceID();
+        Device.get(deviceID).setBusy(false);
+        IORB device = Device.get(deviceID).dequeueIORB();
+    	 
         //10.
-        if(d.dequeueIORB() != null)
-        {
-        	d.startIO(iorb);
-        }
-      
+        if (device != null) 
+    	{
+    		Device.get(deviceID).startIO(device);
+    	}
+
         //11. 
         ThreadCB.dispatch();
     }

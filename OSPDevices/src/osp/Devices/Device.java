@@ -72,7 +72,9 @@ public class Device extends IflDevice
     	//zakljucati stranicu 
     	iorb.getPage().lock(iorb);
     	//povecati iorb count
-    	iorb.getOpenFile().incrementIORBCount();
+    	if(iorb.getThread().getStatus() != ThreadKill){
+    		iorb.getOpenFile().incrementIORBCount();	
+    	}
     	//postaviti cilindar 
     	int blocksPerTrack = ((Disk) this).getSectorsPerTrack()*((Disk) this).getBytesPerSector()/
     						(int) Math.pow(2, MMU.getVirtualAddressBits() - MMU.getPageAddressBits()); 
@@ -133,35 +135,31 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
+    	//System.out.println(thread.getStatus() == ThreadKill);
     	if(iorbQueue.isEmpty())
     	{
     		return;
     	}
 
-    	for(int i = 0; i < iorbQueue.length(); i++)
+    	for(int i = iorbQueue.length() - 1; i >= 0; i--) 
     	{
     		IORB iorb = (IORB) ((GenericList) iorbQueue).getAt(i);
-    		if(iorb.getThread() == thread && thread.getStatus() == ThreadCB.ThreadKill)
+    		if(iorb.getThread().equals(thread))// && thread.getStatus() == ThreadCB.ThreadKill)
     		{
     			//unlock the page associated with the thread
-    			if(iorb.getPage().getFrame().getLockCount() > 0)
-    			{
-    				iorb.getPage().unlock();
-    			}
+    			iorb.getPage().unlock();
+    		
     			//decrement iorb count
     			iorb.getOpenFile().decrementIORBCount();
+    			
     			//try closing open file handle
-    			try
-    			{
+    	
     				if(iorb.getOpenFile().getIORBCount() == 0 && iorb.getOpenFile().closePending)
     				{
     					iorb.getOpenFile().close();	
     				}
-    			}
-    			catch(Exception e)
-    			{
-    				e.printStackTrace();
-    			}
+    				((GenericList) iorbQueue).remove(iorb);
+    			
     		}
     	}
     }

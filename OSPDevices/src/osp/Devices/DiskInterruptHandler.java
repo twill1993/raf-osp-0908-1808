@@ -1,6 +1,7 @@
 package osp.Devices;
 import osp.IFLModules.*;
 import osp.Interrupts.*;
+import osp.Tasks.TaskCB;
 import osp.Threads.*;
 import osp.Memory.*;
 import osp.FileSys.*;
@@ -40,43 +41,48 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     {
     	//1.
     	IORB iorb = (IORB) InterruptVector.getEvent();
-        ThreadCB thread = InterruptVector.getThread();
-      //  PageTableEntry page = iorb.getPage();
         OpenFile oFile = iorb.getOpenFile();
-      
-       //2.
-        oFile.decrementIORBCount();
-       
-        //3.
-        if(oFile.closePending && iorb.getOpenFile().getIORBCount() == 0)
-        {
-    	   oFile.close();
-        }
+        ThreadCB thread = iorb.getThread();
+        PageTableEntry page = iorb.getPage();
+        FrameTableEntry frame = page.getFrame();
         
+       //2.
+      	oFile.decrementIORBCount();
+      
+      	//3.
+    	if(oFile.getIORBCount() == 0 && oFile.closePending)
+		{
+			oFile.close();	
+		}
+			
         //4.
-        iorb.getPage().do_lock(iorb);
-       
-        //5.
-        if(iorb.getThread().getTask().getStatus() != TaskTerm)
+        if(iorb.getPage().getFrame().getLockCount() > 0)
         {
-        	if(iorb.getDeviceID() != SwapDeviceID && iorb.getThread().getStatus() != ThreadCB.ThreadKill)
+        	iorb.getPage().unlock();	
+        }
+		
+        //5.
+        TaskCB task = thread.getTask();
+        if(task.getStatus() != TaskTerm)
+        {
+        	if(iorb.getDeviceID() != SwapDeviceID && thread.getStatus() != ThreadCB.ThreadKill)
             {
-            	iorb.getPage().getFrame().setReferenced(true);
+            	frame.setReferenced(true);
             	if(iorb.getIOType() == FileRead)
             	{
-            		iorb.getPage().getFrame().setDirty(true);
+            		frame.setDirty(true);
             	}
             }
         	//6.
-            else
+            else if(iorb.getDeviceID() == SwapDeviceID)
             {
-            	iorb.getPage().getFrame().setDirty(false);
+            	frame.setDirty(false);
             }
         }
         //7.
-        if(iorb.getThread().getTask().getStatus() == TaskTerm && iorb.getPage().getFrame().isReserved())
+        else if(task.getStatus() == TaskTerm && frame.isReserved())
         {
-        	iorb.getPage().getFrame().setUnreserved(iorb.getThread().getTask());
+        	frame.setUnreserved(task);
         }
         //8.
         iorb.notifyThreads();
@@ -85,9 +91,10 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
         int id = iorb.getDeviceID();
         Device d = Device.get(id);
         Device.get(id).setBusy(false);
-        
+//        System.out.println("Device id = " + id);
         //10.
-        if(d.dequeueIORB() != null){
+        if(d.dequeueIORB() != null)
+        {
         	d.startIO(iorb);
         }
       

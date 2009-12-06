@@ -69,28 +69,33 @@ public class Device extends IflDevice
     */
     public int do_enqueueIORB(IORB iorb)
     {
-    	
-    	iorb.getPage().do_lock(iorb);
+    	//zakljucati stranicu 
+    	iorb.getPage().lock(iorb);
+    	//povecati iorb count
     	iorb.getOpenFile().incrementIORBCount();
-    	int blocksPerTrack = ((Disk) this).getSectorsPerTrack()*((Disk) this).getBytesPerSector()/(int) Math.pow(2, MMU.getVirtualAddressBits() - MMU.getPageAddressBits()); 
+    	//postaviti cilindar 
+    	int blocksPerTrack = ((Disk) this).getSectorsPerTrack()*((Disk) this).getBytesPerSector()/
+    						(int) Math.pow(2, MMU.getVirtualAddressBits() - MMU.getPageAddressBits()); 
     	int cylinder = iorb.getBlockNumber()/ (blocksPerTrack * ((Disk) this).getPlatters());
-
     	iorb.setCylinder(cylinder);
-    	if(iorb.getThread().getStatus() != ThreadCB.ThreadKill)
+    	
+    	if(iorb.getThread().getStatus() == ThreadCB.ThreadKill)
+    	{
+    		return FAILURE;
+    	}
+    	else
     	{
     		if(!this.isBusy())
     		{
-    			this.startIO(iorb);
+    			startIO(iorb);
     			return SUCCESS;
     		}
     		else
     		{
-    			((GenericList) iorbQueue).append(iorb);
+    			((GenericList) iorbQueue).insert(iorb);
+    			return SUCCESS;
     		}
     	}
-    	else return FAILURE;
-    	
-    	return SUCCESS;
     }
 
     /**
@@ -107,9 +112,10 @@ public class Device extends IflDevice
     	}
     	else
     	{
-    		return (IORB) ((GenericList) iorbQueue).getHead();
+    		IORB iorb = (IORB) ((GenericList) iorbQueue).removeTail();
+    		//((GenericList) iorbQueue).remove(iorb);
+    		return iorb;
     	}
-
     }
 
     /**
@@ -131,31 +137,33 @@ public class Device extends IflDevice
     	{
     		return;
     	}
-//    	for(int i = 0; i < iorbQueue.length(); i++){
-//    		if((boolean)iorbQueue.contains(thread))
-//    		{
-//    			
-//    		}
-//    	}
+
     	for(int i = 0; i < iorbQueue.length(); i++)
     	{
-    		IORB iorb = (IORB) ((GenericList)iorbQueue).getAt(i);
-    		if(iorb.getThread() == thread && thread.getStatus() == ThreadKill)
+    		IORB iorb = (IORB) ((GenericList) iorbQueue).getAt(i);
+    		if(iorb.getThread() == thread && thread.getStatus() == ThreadCB.ThreadKill)
     		{
-    			((GenericList) iorbQueue).remove(i);
-    			iorb.getPage().do_unlock();
-    			iorb.getOpenFile().decrementIORBCount();
-    			try{
-    				iorb.getOpenFile().close();
-    				//set close pending
+    			//unlock the page associated with the thread
+    			if(iorb.getPage().getFrame().getLockCount() > 0)
+    			{
+    				iorb.getPage().unlock();
     			}
-    			catch(Exception e){
-    				System.out.println("Exception");
+    			//decrement iorb count
+    			iorb.getOpenFile().decrementIORBCount();
+    			//try closing open file handle
+    			try
+    			{
+    				if(iorb.getOpenFile().getIORBCount() == 0 && iorb.getOpenFile().closePending)
+    				{
+    					iorb.getOpenFile().close();	
+    				}
+    			}
+    			catch(Exception e)
+    			{
+    				e.printStackTrace();
     			}
     		}
     	}
-
-//    	
     }
 
     /** Called by OSP after printing an error message. The student can

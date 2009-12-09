@@ -42,8 +42,42 @@ public class DiskInterruptHandler extends IflDiskInterruptHandler
     */
     public void do_handleInterrupt()
     {
-        // your code goes here
+        IORB iorb = (IORB) InterruptVector.getEvent();
+        iorb.getOpenFile().decrementIORBCount();
+        if(iorb.getOpenFile().closePending && iorb.getOpenFile().getIORBCount() == 0)
+        	iorb.getOpenFile().close();
 
+        iorb.getPage().unlock();
+        
+        if(iorb.getThread().getStatus() == ThreadKill)
+        	return;
+        
+        if(iorb.getDeviceID() != SwapDeviceID)
+        {
+	        iorb.getPage().getFrame().setReferenced(true);
+	        if(iorb.getIOType() == MemoryWrite)
+	        	iorb.getPage().getFrame().setDirty(true);
+        }
+        else
+        {
+        	if(iorb.getThread().getStatus() != ThreadKill)
+        		iorb.getPage().getFrame().setDirty(false);
+        }
+        
+        if(iorb.getThread().getTask().getStatus() != TaskLive)
+        	iorb.getPage().getFrame().setUnreserved(iorb.getThread().getTask());
+        
+        iorb.notifyThreads();
+        Device dev = Device.get(iorb.getDeviceID()); 
+        dev.setBusy(false);
+        
+        iorb = dev.dequeueIORB();
+        if(iorb != null)
+        {
+        	dev.startIO(iorb);
+        }
+        
+        ThreadCB.dispatch();
     }
 
 

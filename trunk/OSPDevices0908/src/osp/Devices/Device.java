@@ -19,7 +19,7 @@ import java.util.*;
 
 public class Device extends IflDevice
 {
-	
+	private GenericList liorbQueue = null; 
     /**
         This constructor initializes a device with the provided parameters.
 	As a first statement it must have the following:
@@ -33,7 +33,8 @@ public class Device extends IflDevice
     public Device(int id, int numberOfBlocks)
     {
         super(id, numberOfBlocks);
-
+        this.iorbQueue = new GenericList();
+        this.liorbQueue = (GenericList)iorbQueue;
     }
 
     /**
@@ -72,7 +73,7 @@ public class Device extends IflDevice
         
         iorb.getOpenFile().incrementIORBCount();
         
-        iorb.setCylinder(iorb.getCylinder());
+        iorb.setCylinder(iorb.getBlockNumber());
         
         if(iorb.getThread().getStatus() == ThreadKill)
         	return FAILURE;
@@ -80,6 +81,8 @@ public class Device extends IflDevice
         if(this.isBusy())
         {
         	//this.iorbQueue q = new Device(id, numberOfBlocks)
+        	this.liorbQueue.append(iorb);
+        	return SUCCESS;
         }
         else
         {
@@ -88,7 +91,7 @@ public class Device extends IflDevice
         }
         
         
-        return SUCCESS;
+        //return SUCCESS;
 
     }
 
@@ -100,8 +103,10 @@ public class Device extends IflDevice
     */
     public IORB do_dequeueIORB()
     {
-        // your code goes here
-
+        if(this.liorbQueue.isEmpty())
+        	return null;
+        else
+        	return (IORB)this.liorbQueue.removeHead();
     }
 
     /**
@@ -119,7 +124,21 @@ public class Device extends IflDevice
     */
     public void do_cancelPendingIO(ThreadCB thread)
     {
-        // your code goes here
+        for(int i = this.liorbQueue.length(); i >= 0; ++i)
+        {
+        	IORB I = (IORB) this.liorbQueue.getAt(i);
+        	if(I.getThread().equals(thread))
+        	{
+        		//i.getThread().getReservedFrame().setReserved(null);
+        		//I.getThread().getReservedFrame().decrementLockCount();
+        		I.getPage().unlock();
+        		I.getOpenFile().decrementIORBCount();
+        		if(I.getOpenFile().closePending && I.getOpenFile().getIORBCount() == 0)
+        			I.getOpenFile().close();
+        		
+        		this.liorbQueue.remove(I);
+        	}
+        }
 
     }
 
